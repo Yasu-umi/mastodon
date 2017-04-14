@@ -1,0 +1,36 @@
+machine:
+  services:
+    - docker
+  timezone: Asia/Tokyo
+  node:
+    version: 7.9.0
+  environment:
+    REDIS_URL: redis://localhost:6379
+dependencies:
+  cache_directories:
+    - "node_modules"
+    - "vendor/bundle"
+  pre:
+    - sudo pip install awscli
+    - npm install -g npm@3
+    - npm install -g yarn
+    - cp ./.env.production.sample ./.env.production
+  override:
+    - bundle install
+    - yarn install
+database:
+  override:
+    - bundle exec rails db:create db:migrate
+    - sudo service redis-server start
+test:
+  override:
+    - bundle exec rspec
+    - npm test
+deployment:
+  production:
+    branch: master
+    commands:
+      - $(aws ecr get-login --region ap-northeast-1)
+      - docker build -t mstdn .
+      - docker tag mstdn:latest $ECR/mstdn:latest
+      - docker push $ECR/mstdn:latest
